@@ -1,52 +1,53 @@
-﻿namespace FormattinTextBoxBox
+﻿using System.Linq;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+
+namespace FormattinTextBoxBox
 {
-    using System.Collections.Generic;
     using System.Windows.Controls;
-    using System.Windows.Input;
 
     public class FormattingTextBox : TextBox
     {
-        private readonly List<TextChangedEventArgs> changes = new List<TextChangedEventArgs>();
-        private bool ignoreChange;
+        private static readonly DependencyPropertyKey FormattedTextPropertyKey = DependencyProperty.RegisterReadOnly(
+            "FormattedText",
+            typeof (string),
+            typeof (FormattingTextBox),
+            new PropertyMetadata(default(string)));
 
-        public FormattingTextBox()
+        public static readonly DependencyProperty FormattedTextProperty = FormattedTextPropertyKey.DependencyProperty;
+        private DrawingVisual textDrawingVisual;
+
+        static FormattingTextBox()
         {
+            //DefaultStyleKeyProperty.OverrideMetadata(typeof(FormattingTextBox), new FrameworkPropertyMetadata(typeof(FormattingTextBox)));
         }
 
-        protected override void OnPreviewGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        public string FormattedText
         {
-            this.ignoreChange = true;
-            this.Text = this.Text.Trim('#');
-            this.RaiseEvent(new TextChangedEventArgs(TextChangedEvent, UndoAction.Clear));
-            foreach (var change in this.changes)
-            {
-                this.RaiseEvent(change);
-            }
-
-            this.ignoreChange = false;
-            base.OnPreviewGotKeyboardFocus(e);
+            get { return (string)this.GetValue(FormattedTextProperty); }
+            private set { this.SetValue(FormattedTextPropertyKey, value); }
         }
 
         protected override void OnPreviewLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
         {
-            this.ignoreChange = true;
-            this.Text = $"#{this.Text}#";
-            this.ignoreChange = false;
+            this.textDrawingVisual = this.NestedChildren().OfType<DrawingVisual>().SingleOrDefault();
+            var drawingGroup = this.textDrawingVisual.Drawing;
+            this.FormattedText = $"#{this.Text}#";
             base.OnPreviewLostKeyboardFocus(e);
+        }
+
+        protected override void OnPreviewGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        {
+            //this.textDrawingVisual.
+            base.OnPreviewGotKeyboardFocus(e);
         }
 
         protected override void OnTextChanged(TextChangedEventArgs e)
         {
-            if (!this.ignoreChange)
+            if (!this.IsKeyboardFocused)
             {
-                if (e.UndoAction == UndoAction.Clear)
-                {
-                    this.changes.Clear();
-                }
-                else
-                {
-                    this.changes.Add(e);
-                }
+                this.FormattedText = $"#{this.Text}#";
             }
 
             base.OnTextChanged(e);
