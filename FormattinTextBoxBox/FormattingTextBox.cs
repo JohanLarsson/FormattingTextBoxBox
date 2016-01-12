@@ -1,4 +1,6 @@
-﻿namespace FormattinTextBoxBox
+﻿using System.Windows.Input;
+
+namespace FormattinTextBoxBox
 {
     using System;
     using System.Globalization;
@@ -17,7 +19,7 @@
 
         public static readonly DependencyProperty FormattedTextProperty = FormattedTextPropertyKey.DependencyProperty;
 
-        private bool isInitialized;
+        private TextBlock whenNotFocused;
 
         public string FormattedText
         {
@@ -27,10 +29,10 @@
 
         protected override Size ArrangeOverride(Size arrangeBounds)
         {
-            if (!this.isInitialized)
+            if (this.whenNotFocused == null)
             {
                 var scrollViewer = this.NestedChildren().OfType<ScrollViewer>().Single();
-                var textBlock = new TextBlock { Margin = new Thickness(2, 0, 2, 0) };
+                this.whenNotFocused = new TextBlock { Margin = new Thickness(2, 0, 2, 0) };
                 var formattedTextBinding = new Binding
                 {
                     Path = new PropertyPath(FormattedTextProperty),
@@ -38,19 +40,35 @@
                     Mode = BindingMode.OneWay,
                     UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
                 };
-                BindingOperations.SetBinding(textBlock, TextBlock.TextProperty, formattedTextBinding);
+                BindingOperations.SetBinding(this.whenNotFocused, TextBlock.TextProperty, formattedTextBinding);
 
-                var binding = new Binding
+                var whenNotFocusedVisibility = new Binding
                 {
                     Path = new PropertyPath(IsKeyboardFocusWithinProperty),
                     Source = this,
                     Mode = BindingMode.OneWay,
                     UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
-                    Converter = new FocusedContentConverter(scrollViewer.Content, textBlock)
+                    Converter = HiddenWhenTrueConverter.Default
                 };
-                BindingOperations.SetBinding(scrollViewer, ContentControl.ContentProperty, binding);
-                this.isInitialized = true;
+                BindingOperations.SetBinding(this.whenNotFocused, TextBlock.VisibilityProperty, whenNotFocusedVisibility);
+
+                var content = (UIElement)scrollViewer.Content;
+                var grid = new Grid();
+                scrollViewer.Content = grid;
+                grid.Children.Add(this.whenNotFocused);
+                grid.Children.Add(content);
+
+                var whenFocusedVisibility = new Binding
+                {
+                    Path = new PropertyPath(IsKeyboardFocusWithinProperty),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+                    Converter = VisibleWhenTrueConverter.Default
+                };
+                BindingOperations.SetBinding(content, UIElement.VisibilityProperty, whenFocusedVisibility);
             }
+
             return base.ArrangeOverride(arrangeBounds);
         }
 
@@ -60,25 +78,41 @@
             base.OnTextChanged(e);
         }
 
-        private class FocusedContentConverter : IValueConverter
+        private class VisibleWhenTrueConverter : IValueConverter
         {
-            private readonly object whenFocused;
-            private readonly TextBlock whenNotFocused;
+             internal static readonly VisibleWhenTrueConverter Default = new VisibleWhenTrueConverter();
 
-            public FocusedContentConverter(object whenFocused, TextBlock whenNotFocused)
+            private VisibleWhenTrueConverter()
             {
-                this.whenFocused = whenFocused;
-                this.whenNotFocused = whenNotFocused;
             }
 
             public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                return Equals(value, true) ? this.whenFocused : this.whenNotFocused;
+                return (bool) value ? System.Windows.Visibility.Visible : Visibility.Hidden;
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                throw new NotImplementedException();
+                throw new NotSupportedException("Only for one way bindings");
+            }
+        }
+
+        private class HiddenWhenTrueConverter : IValueConverter
+        {
+            internal static readonly HiddenWhenTrueConverter Default = new HiddenWhenTrueConverter();
+
+            private HiddenWhenTrueConverter()
+            {
+            }
+
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                return (bool)value ? System.Windows.Visibility.Hidden : Visibility.Visible;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                throw new NotSupportedException("Only for one way bindings");
             }
         }
     }
