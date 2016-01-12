@@ -1,7 +1,7 @@
-﻿using System.Windows;
-
-namespace FormattinTextBoxBox
+﻿namespace FormattinTextBoxBox
 {
+    using System.Windows;
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>

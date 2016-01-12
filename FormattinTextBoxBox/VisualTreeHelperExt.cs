@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Windows;
-using System.Windows.Media;
-
-namespace FormattinTextBoxBox
+﻿namespace FormattinTextBoxBox
 {
+    using System.Collections.Generic;
+    using System.Windows;
+    using System.Windows.Media;
+
     internal static class VisualTreeHelperExt
     {
         internal static IEnumerable<DependencyObject> NestedChildren(this DependencyObject parent)

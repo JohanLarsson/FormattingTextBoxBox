@@ -1,12 +1,10 @@
-﻿using System.Globalization;
-using System.Linq;
-using System.Windows;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-
-namespace FormattinTextBoxBox
+﻿namespace FormattinTextBoxBox
 {
+    using System;
+    using System.Globalization;
+    using System.Linq;
+    using System.Windows;
+    using System.Windows.Data;
     using System.Windows.Controls;
 
     public class FormattingTextBox : TextBox
@@ -15,15 +13,11 @@ namespace FormattinTextBoxBox
             "FormattedText",
             typeof(string),
             typeof(FormattingTextBox),
-            new PropertyMetadata(default(string)));
+            new PropertyMetadata(string.Empty));
 
         public static readonly DependencyProperty FormattedTextProperty = FormattedTextPropertyKey.DependencyProperty;
-        private DrawingVisual textDrawingVisual;
 
-        static FormattingTextBox()
-        {
-            //DefaultStyleKeyProperty.OverrideMetadata(typeof(FormattingTextBox), new FrameworkPropertyMetadata(typeof(FormattingTextBox)));
-        }
+        private bool isInitialized;
 
         public string FormattedText
         {
@@ -31,52 +25,61 @@ namespace FormattinTextBoxBox
             private set { this.SetValue(FormattedTextPropertyKey, value); }
         }
 
-        protected override void OnPreviewLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        protected override Size ArrangeOverride(Size arrangeBounds)
         {
-            DrawFormatted();
-            base.OnPreviewLostKeyboardFocus(e);
-        }
-
-        protected override void OnPreviewGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
-        {
-            this.textDrawingVisual = this.NestedChildren().OfType<DrawingVisual>().Single();
-            using (var drawingContext = textDrawingVisual.RenderOpen())
+            if (!this.isInitialized)
             {
-                var formattedText = GetFormattedtext(Text);
-                drawingContext.DrawText(formattedText, new Point(0, 0));
-            }
+                var scrollViewer = this.NestedChildren().OfType<ScrollViewer>().Single();
+                var textBlock = new TextBlock { Margin = new Thickness(2, 0, 2, 0) };
+                var formattedTextBinding = new Binding
+                {
+                    Path = new PropertyPath(FormattedTextProperty),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+                };
+                BindingOperations.SetBinding(textBlock, TextBlock.TextProperty, formattedTextBinding);
 
-            base.OnPreviewGotKeyboardFocus(e);
+                var binding = new Binding
+                {
+                    Path = new PropertyPath(IsKeyboardFocusWithinProperty),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+                    Converter = new FocusedContentConverter(scrollViewer.Content, textBlock)
+                };
+                BindingOperations.SetBinding(scrollViewer, ContentControl.ContentProperty, binding);
+                this.isInitialized = true;
+            }
+            return base.ArrangeOverride(arrangeBounds);
         }
 
         protected override void OnTextChanged(TextChangedEventArgs e)
         {
             this.FormattedText = $"#{this.Text}#";
-            if (IsVisible && !IsKeyboardFocused)
-            {
-                DrawFormatted();
-            }
             base.OnTextChanged(e);
         }
 
-        private void DrawFormatted()
+        private class FocusedContentConverter : IValueConverter
         {
-            this.textDrawingVisual = this.NestedChildren().OfType<DrawingVisual>().Single();
-            using (var drawingContext = textDrawingVisual.RenderOpen())
-            {
-                var formattedText = GetFormattedtext(FormattedText);
-                drawingContext.DrawText(formattedText, new Point(0, 0));
-            }
-        }
+            private readonly object whenFocused;
+            private readonly TextBlock whenNotFocused;
 
-        private FormattedText GetFormattedtext(string text)
-        {
-            var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-            var textFormattingMode = (TextFormattingMode)GetValue(TextOptions.TextFormattingModeProperty);
-            var formattedText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection,
-                typeface,
-                FontSize, Foreground, null, textFormattingMode);
-            return formattedText;
+            public FocusedContentConverter(object whenFocused, TextBlock whenNotFocused)
+            {
+                this.whenFocused = whenFocused;
+                this.whenNotFocused = whenNotFocused;
+            }
+
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                return Equals(value, true) ? this.whenFocused : this.whenNotFocused;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

@@ -1,7 +1,28 @@
 ﻿namespace FormattinTextBoxBox
 {
-    public class ViewModel
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
+
+    public class ViewModel : INotifyPropertyChanged
     {
-        public string Text { get; set; }
+        private string text = "abc";
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string Text
+        {
+            get { return this.text; }
+            set
+            {
+                if (value == this.text) return;
+                this.text = value;
+                this.OnPropertyChanged();
+            }
+        }
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }
