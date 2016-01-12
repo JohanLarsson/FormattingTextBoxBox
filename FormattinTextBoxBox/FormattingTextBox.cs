@@ -19,57 +19,54 @@ namespace FormattinTextBoxBox
 
         public static readonly DependencyProperty FormattedTextProperty = FormattedTextPropertyKey.DependencyProperty;
 
-        private TextBlock whenNotFocused;
+        public FormattingTextBox()
+        {
+            Loaded += this.OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= OnLoaded;
+            var scrollViewer = this.NestedChildren().OfType<ScrollViewer>().Single();
+            var whenNotFocused = new TextBlock { Margin = new Thickness(2, 0, 2, 0) };
+            var formattedTextBinding = new Binding
+            {
+                Path = new PropertyPath(FormattedTextProperty),
+                Source = this,
+                Mode = BindingMode.OneWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+            };
+            BindingOperations.SetBinding(whenNotFocused, TextBlock.TextProperty, formattedTextBinding);
+
+            var whenNotFocusedVisibilityBinding = new Binding
+            {
+                Path = new PropertyPath(IsKeyboardFocusWithinProperty),
+                Source = this,
+                Mode = BindingMode.OneWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+                Converter = HiddenWhenTrueConverter.Default
+            };
+            BindingOperations.SetBinding(whenNotFocused, TextBlock.VisibilityProperty, whenNotFocusedVisibilityBinding);
+
+            var whenFocused = scrollViewer.NestedChildren().OfType<ScrollContentPresenter>().Single();
+            var grid = (Grid)whenFocused.Parent;
+            grid.Children.Add(whenNotFocused);
+
+            var whenFocusedVisibilityBinding = new Binding
+            {
+                Path = new PropertyPath(IsKeyboardFocusWithinProperty),
+                Source = this,
+                Mode = BindingMode.OneWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+                Converter = VisibleWhenTrueConverter.Default
+            };
+            BindingOperations.SetBinding(whenFocused, UIElement.VisibilityProperty, whenFocusedVisibilityBinding);
+        }
 
         public string FormattedText
         {
             get { return (string)this.GetValue(FormattedTextProperty); }
             private set { this.SetValue(FormattedTextPropertyKey, value); }
-        }
-
-        protected override Size ArrangeOverride(Size arrangeBounds)
-        {
-            if (this.whenNotFocused == null)
-            {
-                var scrollViewer = this.NestedChildren().OfType<ScrollViewer>().Single();
-                this.whenNotFocused = new TextBlock { Margin = new Thickness(2, 0, 2, 0) };
-                var formattedTextBinding = new Binding
-                {
-                    Path = new PropertyPath(FormattedTextProperty),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
-                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
-                };
-                BindingOperations.SetBinding(this.whenNotFocused, TextBlock.TextProperty, formattedTextBinding);
-
-                var whenNotFocusedVisibility = new Binding
-                {
-                    Path = new PropertyPath(IsKeyboardFocusWithinProperty),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
-                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
-                    Converter = HiddenWhenTrueConverter.Default
-                };
-                BindingOperations.SetBinding(this.whenNotFocused, TextBlock.VisibilityProperty, whenNotFocusedVisibility);
-
-                var content = (UIElement)scrollViewer.Content;
-                var grid = new Grid();
-                scrollViewer.Content = grid;
-                grid.Children.Add(this.whenNotFocused);
-                grid.Children.Add(content);
-
-                var whenFocusedVisibility = new Binding
-                {
-                    Path = new PropertyPath(IsKeyboardFocusWithinProperty),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
-                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
-                    Converter = VisibleWhenTrueConverter.Default
-                };
-                BindingOperations.SetBinding(content, UIElement.VisibilityProperty, whenFocusedVisibility);
-            }
-
-            return base.ArrangeOverride(arrangeBounds);
         }
 
         protected override void OnTextChanged(TextChangedEventArgs e)
@@ -80,7 +77,7 @@ namespace FormattinTextBoxBox
 
         private class VisibleWhenTrueConverter : IValueConverter
         {
-             internal static readonly VisibleWhenTrueConverter Default = new VisibleWhenTrueConverter();
+            internal static readonly VisibleWhenTrueConverter Default = new VisibleWhenTrueConverter();
 
             private VisibleWhenTrueConverter()
             {
@@ -88,7 +85,7 @@ namespace FormattinTextBoxBox
 
             public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                return (bool) value ? System.Windows.Visibility.Visible : Visibility.Hidden;
+                return (bool)value ? System.Windows.Visibility.Visible : Visibility.Hidden;
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
