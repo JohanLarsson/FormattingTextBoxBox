@@ -11,13 +11,20 @@
     <Window.DataContext>
         <local:ViewModel />
     </Window.DataContext>
-    <Grid Width="50" HorizontalAlignment="Left">
+    <Grid Width="70"
+          Margin="5"
+          HorizontalAlignment="Left">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="5" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition />
         </Grid.RowDefinitions>
-        <local:FormattingTextBox Text="{Binding Text}" />
-        <TextBox Grid.Row="1" Text="{Binding Text}" />
+        <local:FormattingTextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+        <TextBox Grid.Row="2" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+        <Button Grid.Row="3"
+                Margin="5"
+                Content="Lose focus" />
     </Grid>
 </Window>
